@@ -1,6 +1,7 @@
 // Copyright 2019 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { ipcRenderer } from 'electron';
 import lodash from 'lodash';
 import pMap from 'p-map';
 import Queue from 'p-queue';
@@ -1152,6 +1153,87 @@ export async function copyStickerToAttachments({
   const newAttachmentData = await writeNewAttachmentData(data);
 
   return { ...newSticker, ...newAttachmentData };
+}
+
+export type ForkedStickerData = Readonly<{
+  id: number;
+  contentType: string;
+  buffer: Uint8Array<ArrayBuffer>;
+  isCover: boolean;
+  emoji?: { emoji: string; name: string };
+}>;
+
+export type ForkStickerPackPayload = Readonly<{
+  title: string;
+  author: string;
+  stickers: ReadonlyArray<ForkedStickerData>;
+}>;
+
+function sanitizeEmojiShortName(name: string): string {
+  return name.replace(/[^a-zA-Z_]/g, '');
+}
+
+// Gathers a fully-downloaded pack's stickers and hands them off to the
+//   sticker-creator window so the user can fork it into a new pack. The
+//   sticker-creator window is sandboxed and has no filesystem/decrypt access,
+//   so all of this must happen here, in the main window.
+export async function forkStickerPack(
+  packId: string,
+  packKey: string
+): Promise<void> {
+  let pack = getStickerPack(packId);
+
+  if (!pack || (pack.status !== 'downloaded' && pack.status !== 'installed')) {
+    await downloadStickerPack(packId, packKey, {
+      finalStatus: 'downloaded',
+      actionSource: 'ui',
+    });
+    pack = getStickerPack(packId);
+  }
+
+  if (!pack || (pack.status !== 'downloaded' && pack.status !== 'installed')) {
+    throw new Error(
+      `forkStickerPack: Pack ${redactPackId(packId)} could not be downloaded`
+    );
+  }
+
+  const { coverStickerId } = pack;
+
+  const stickers = await pMap(
+    values(pack.stickers),
+    async (sticker): Promise<ForkedStickerData> => {
+      const buffer = await readStickerData(sticker);
+      const contentType = sniffImageMimeType(buffer) ?? IMAGE_WEBP;
+      const emoji = sticker.emoji
+        ? {
+            emoji: sticker.emoji,
+            // Older or third-party packs can carry an emoji string that
+            //   isn't recognized by our current emoji data; fall back to no
+            //   shortcode rather than failing the whole fork.
+            name: Emoji.isEmoji(sticker.emoji)
+              ? sanitizeEmojiShortName(Emoji.getDisplayLabel(sticker.emoji))
+              : '',
+          }
+        : undefined;
+
+      return {
+        id: sticker.id,
+        contentType,
+        buffer,
+        isCover: sticker.id === coverStickerId,
+        emoji,
+      };
+    },
+    { concurrency: 3 }
+  );
+
+  const payload: ForkStickerPackPayload = {
+    title: pack.title,
+    author: pack.author,
+    stickers,
+  };
+
+  await ipcRenderer.invoke('show-sticker-creator-fork', payload);
 }
 
 // In the case where a sticker pack is uninstalled, we want to delete it if there are no

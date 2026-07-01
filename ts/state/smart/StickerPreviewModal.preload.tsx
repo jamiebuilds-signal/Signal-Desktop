@@ -25,8 +25,12 @@ export const SmartStickerPreviewModal = memo(function SmartStickerPreviewModal({
   const packs = useSelector(getPacks);
   const blessedPacks = useSelector(getBlessedPacks);
 
-  const { downloadStickerPack, installStickerPack, uninstallStickerPack } =
-    useStickersActions();
+  const {
+    downloadStickerPack,
+    forkStickerPack,
+    installStickerPack,
+    uninstallStickerPack,
+  } = useStickersActions();
   const { closeStickerPackPreview } = useGlobalModalActions();
   const { showToast } = useToastActions();
 
@@ -39,6 +43,7 @@ export const SmartStickerPreviewModal = memo(function SmartStickerPreviewModal({
     <StickerPreviewModal
       closeStickerPackPreview={closeStickerPackPreview}
       downloadStickerPack={downloadStickerPack}
+      forkStickerPack={forkStickerPack}
       i18n={i18n}
       installStickerPack={installStickerPack}
       pack={pack}

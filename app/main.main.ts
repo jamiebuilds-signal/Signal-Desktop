@@ -3403,9 +3403,42 @@ ipc.handle(
   }
 );
 
+type ForkStickerPackPayload = Readonly<{
+  title: string;
+  author: string;
+  stickers: ReadonlyArray<{
+    id: number;
+    contentType: string;
+    buffer: Uint8Array<ArrayBuffer>;
+    isCover: boolean;
+    emoji?: { emoji: string; name: string };
+  }>;
+}>;
+
+// Set by 'show-sticker-creator-fork' and consumed exactly once by
+// 'art-creator:getForkPayload', which the sticker-creator window's `/art/fork`
+// route pulls on mount. This avoids racing a push over IPC against the
+// renderer's listener not being mounted yet.
+let pendingForkPayload: ForkStickerPackPayload | undefined;
+
+function getStickerCreatorUrl(mode?: 'fork'): string {
+  const url = new URL(
+    prepareFileUrl([rootDir, 'sticker-creator', 'dist', 'index.html'])
+  );
+  if (mode === 'fork') {
+    url.searchParams.set('mode', 'fork');
+  }
+  return url.href;
+}
+
 let stickerCreatorWindow: BrowserWindow | undefined;
-async function showStickerCreatorWindow() {
+async function showStickerCreatorWindow(windowOptions: { mode?: 'fork' } = {}) {
+  const { mode } = windowOptions;
+
   if (stickerCreatorWindow) {
+    if (mode === 'fork') {
+      await safeLoadURL(stickerCreatorWindow, getStickerCreatorUrl(mode));
+    }
     stickerCreatorWindow.show();
     return;
   }
@@ -3447,11 +3480,27 @@ async function showStickerCreatorWindow() {
     stickerCreatorWindow = undefined;
   });
 
-  await safeLoadURL(
-    stickerCreatorWindow,
-    prepareFileUrl([rootDir, 'sticker-creator', 'dist', 'index.html'])
-  );
+  await safeLoadURL(stickerCreatorWindow, getStickerCreatorUrl(mode));
 }
+
+ipc.handle(
+  'show-sticker-creator-fork',
+  async (_event, payload: ForkStickerPackPayload) => {
+    if (!payload || !Array.isArray(payload.stickers)) {
+      log.warn('show-sticker-creator-fork: ignoring malformed payload');
+      return;
+    }
+
+    pendingForkPayload = payload;
+    await showStickerCreatorWindow({ mode: 'fork' });
+  }
+);
+
+ipc.handle('art-creator:getForkPayload', () => {
+  const payload = pendingForkPayload;
+  pendingForkPayload = undefined;
+  return payload;
+});
 
 if (isTestEnvironment(getEnvironment())) {
   ipc.on('ci:test-electron:getArgv', event => {

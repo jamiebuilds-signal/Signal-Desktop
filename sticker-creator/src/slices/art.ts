@@ -50,6 +50,19 @@ export type SetPackMetaPayload = Readonly<{
   key: string;
 }>;
 
+export type ForkedStickerPayload = Readonly<{
+  path: ArtPath;
+  imageData: ArtImageData;
+  emoji?: EmojiData;
+  isCover: boolean;
+}>;
+
+export type InitializeFromForkPayload = Readonly<{
+  title: string;
+  author: string;
+  stickers: ReadonlyArray<ForkedStickerPayload>;
+}>;
+
 const initialState: ArtState = {
   artType: ArtType.Sticker,
   order: [],
@@ -209,12 +222,38 @@ const artSlice = createSlice({
         artType,
       };
     },
+
+    initializeFromFork: (
+      state,
+      { payload }: PayloadAction<InitializeFromForkPayload>
+    ) => {
+      assert(state.artType === ArtType.Sticker, 'Unexpected art type');
+      const truncated = payload.stickers.slice(0, MAX_STICKERS);
+
+      state.order = truncated.map(({ path }) => path);
+      state.data = Object.fromEntries(
+        truncated.map(({ path, imageData, emoji }) => [
+          path,
+          { imageData, emoji },
+        ])
+      );
+      state.title = payload.title;
+      state.author = payload.author;
+
+      const cover = truncated.find(({ isCover }) => isCover) ?? truncated[0];
+      if (cover) {
+        state.cover = cover.imageData;
+      } else {
+        delete state.cover;
+      }
+    },
   },
 });
 
 export const {
   addImageData,
   initializeImages,
+  initializeFromFork,
   removeImage,
   setCover,
   setEmoji,

@@ -17,10 +17,15 @@ import { Root } from './routes/Root';
 import { createArtRoutes } from './routes/art';
 import { loadLocale } from './util/i18n';
 
+const initialArtPath =
+  new URLSearchParams(window.location.search).get('mode') === 'fork'
+    ? '/art/fork'
+    : '/art/?artType=sticker';
+
 const router = createMemoryRouter(
   createRoutesFromElements(
     <Route path="/" loader={() => loadLocale()} element={<Root />}>
-      <Route index element={<Navigate to="/art/?artType=sticker" replace />} />
+      <Route index element={<Navigate to={initialArtPath} replace />} />
       {createArtRoutes()}
     </Route>
   )

@@ -34,3 +34,7 @@ contextBridge.exposeInMainWorld(
 contextBridge.exposeInMainWorld('getFilePath', (file: File) =>
   webUtils.getPathForFile(file)
 );
+
+contextBridge.exposeInMainWorld('getForkPayload', () =>
+  ipcRenderer.invoke('art-creator:getForkPayload')
+);

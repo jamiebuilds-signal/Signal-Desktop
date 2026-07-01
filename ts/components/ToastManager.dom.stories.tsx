@@ -240,6 +240,8 @@ function getToast(toastType: ToastType): AnyToast {
       return { toastType: ToastType.ReportedSpamAndBlocked };
     case ToastType.SQLError:
       return { toastType: ToastType.SQLError };
+    case ToastType.StickerPackForkFailed:
+      return { toastType: ToastType.StickerPackForkFailed };
     case ToastType.StickerPackInstallFailed:
       return { toastType: ToastType.StickerPackInstallFailed };
     case ToastType.StoryMuted:

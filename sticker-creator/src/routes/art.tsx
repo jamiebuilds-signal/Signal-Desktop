@@ -11,7 +11,9 @@ import {
 } from 'react-router-dom';
 
 import { ArtType } from '../constants';
-import { reset } from '../slices/art';
+import { reset, initializeFromFork } from '../slices/art';
+import type { InitializeFromForkPayload } from '../slices/art';
+import { getForkPayload } from '../util/api';
 import { DropStage } from './art/DropStage';
 import { EmojiStage } from './art/EmojiStage';
 import { UploadStage } from './art/UploadStage';
@@ -46,10 +48,32 @@ function Index() {
   return <Navigate to="/art/drop" replace />;
 }
 
+type ForkLoaderData = Readonly<{
+  payload: InitializeFromForkPayload;
+}>;
+
+const forkFlow: LoaderFunction = async () => {
+  const payload = await getForkPayload();
+  if (!payload) {
+    throw new Error('No fork payload available');
+  }
+  return { payload } satisfies ForkLoaderData;
+};
+
+function ForkIndex() {
+  const dispatch = useDispatch();
+  const { payload } = useLoaderData() as ForkLoaderData;
+
+  dispatch(initializeFromFork(payload));
+
+  return <Navigate to="/art/drop" replace />;
+}
+
 export function createArtRoutes(): JSX.Element {
   return (
     <Route path="/art">
       <Route index loader={startFlow} element={<Index />} />
+      <Route path="/art/fork" loader={forkFlow} element={<ForkIndex />} />
       <Route path="/art/drop" element={<DropStage />} />
       <Route path="/art/add-emojis" element={<EmojiStage />} />
       <Route path="/art/add-meta" element={<MetaStage />} />

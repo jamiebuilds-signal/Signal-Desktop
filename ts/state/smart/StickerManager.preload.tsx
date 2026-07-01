@@ -24,8 +24,12 @@ export const SmartStickerManager = memo(function SmartStickerManager() {
   const knownPacks = useSelector(getKnownStickerPacks);
   const tab = useSelector(getStickerManagerTab);
 
-  const { downloadStickerPack, installStickerPack, uninstallStickerPack } =
-    useStickersActions();
+  const {
+    downloadStickerPack,
+    forkStickerPack,
+    installStickerPack,
+    uninstallStickerPack,
+  } = useStickersActions();
   const { closeStickerPackPreview } = useGlobalModalActions();
   const { showToast } = useToastActions();
   const { setStickerManagerTab } = useStickersActions();
@@ -35,6 +39,7 @@ export const SmartStickerManager = memo(function SmartStickerManager() {
       blessedPacks={blessedPacks}
       closeStickerPackPreview={closeStickerPackPreview}
       downloadStickerPack={downloadStickerPack}
+      forkStickerPack={forkStickerPack}
       i18n={i18n}
       installStickerPack={installStickerPack}
       installedPacks={installedPacks}

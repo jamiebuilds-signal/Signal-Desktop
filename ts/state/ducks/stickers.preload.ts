@@ -3,6 +3,7 @@
 
 import lodash, { type Dictionary } from 'lodash';
 import type { ReadonlyDeep } from 'type-fest';
+import type { ThunkAction } from 'redux-thunk';
 import type {
   StickerPackStatusType,
   StickerType as StickerDBType,
@@ -16,6 +17,7 @@ import type {
 } from '../../types/Stickers.preload.ts';
 import {
   downloadStickerPack as externalDownloadStickerPack,
+  forkStickerPack as externalForkStickerPack,
   maybeDeletePack,
 } from '../../types/Stickers.preload.ts';
 import { drop } from '../../util/drop.std.ts';
@@ -30,6 +32,7 @@ import type { BoundActionCreatorsMapObject } from '../../hooks/useBoundActions.s
 import { useBoundActions } from '../../hooks/useBoundActions.std.ts';
 import { strictAssert } from '../../util/assert.std.ts';
 import type { Emoji } from '../../axo/emoji.std.ts';
+import type { StateType as RootStateType } from '../reducer.preload.ts';
 
 const { omit, reject } = lodash;
 
@@ -164,6 +167,7 @@ export type StickersActionType = ReadonlyDeep<
 export const actions = {
   clearInstalledStickerPack,
   downloadStickerPack,
+  forkStickerPack,
   installStickerPack,
   removeStickerPack,
   setStickerManagerTab,
@@ -233,6 +237,16 @@ function downloadStickerPack(
   );
 
   return noopAction('downloadStickerPack');
+}
+
+function forkStickerPack(
+  packId: string,
+  packKey: string
+): ThunkAction<Promise<void>, RootStateType, unknown, NoopActionType> {
+  return async dispatch => {
+    await externalForkStickerPack(packId, packKey);
+    dispatch(noopAction('forkStickerPack'));
+  };
 }
 
 function installStickerPack(

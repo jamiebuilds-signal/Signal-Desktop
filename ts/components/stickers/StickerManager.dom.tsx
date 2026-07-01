@@ -27,6 +27,7 @@ export type OwnProps = {
     packKey: string,
     options: { actionSource: 'ui' }
   ) => unknown;
+  readonly forkStickerPack?: (packId: string, packKey: string) => Promise<void>;
   readonly i18n: LocalizerType;
   readonly installStickerPack: (
     packId: string,
@@ -52,6 +53,7 @@ export const StickerManager = memo(function StickerManagerInner({
   blessedPacks,
   closeStickerPackPreview,
   downloadStickerPack,
+  forkStickerPack,
   i18n,
   installStickerPack,
   installedPacks,
@@ -101,9 +103,18 @@ export const StickerManager = memo(function StickerManagerInner({
         onClickPreview={previewPack}
         installStickerPack={installStickerPack}
         uninstallStickerPack={uninstallStickerPack}
+        forkStickerPack={forkStickerPack}
+        showToast={showToast}
       />
     ),
-    [i18n, installStickerPack, previewPack, uninstallStickerPack]
+    [
+      forkStickerPack,
+      i18n,
+      installStickerPack,
+      previewPack,
+      showToast,
+      uninstallStickerPack,
+    ]
   );
 
   const setTabAll = useCallback(() => setTab('all'), [setTab]);
@@ -136,6 +147,7 @@ export const StickerManager = memo(function StickerManagerInner({
         <StickerPreviewModal
           closeStickerPackPreview={closeStickerPackPreview}
           downloadStickerPack={downloadStickerPack}
+          forkStickerPack={forkStickerPack}
           i18n={i18n}
           installStickerPack={installStickerPack}
           onClose={clearPackToPreview}

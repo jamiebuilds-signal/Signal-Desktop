@@ -870,6 +870,13 @@ function renderToast({
       </Toast>
     );
   }
+  if (toastType === ToastType.StickerPackForkFailed) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:stickers--toast--ForkFailed')}
+      </Toast>
+    );
+  }
   if (toastType === ToastType.SQLError) {
     return (
       <Toast

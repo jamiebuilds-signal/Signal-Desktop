@@ -16,6 +16,10 @@ import { artAddStickersRoute } from '../../util/signalRoutes.std.ts';
 import { drop } from '../../util/drop.std.ts';
 import { ToastType } from '../../types/Toast.dom.tsx';
 import { fromBase64PackKeyToHex } from '../../util/Stickers.std.ts';
+import * as Errors from '../../types/errors.std.ts';
+import { createLogger } from '../../logging/log.std.ts';
+
+const log = createLogger('StickerPreviewModal');
 
 export type Props = Readonly<{
   onClose?: () => void;
@@ -35,6 +39,7 @@ export type Props = Readonly<{
     packKey: string,
     options: { actionSource: 'ui' }
   ) => void;
+  forkStickerPack?: (packId: string, packKey: string) => Promise<void>;
   showToast: ShowToastAction;
   pack?: StickerPackType;
   i18n: LocalizerType;
@@ -45,9 +50,13 @@ function renderBody({
   i18n,
   handleCopyLink,
   handleStartUninstall,
+  handleFork,
+  forking,
 }: Pick<Props, 'i18n' | 'pack'> & {
   handleCopyLink: () => void;
   handleStartUninstall: () => void;
+  handleFork?: () => void;
+  forking: boolean;
 }) {
   if (pack == null) {
     return null;
@@ -122,6 +131,14 @@ function renderBody({
             onClick={handleStartUninstall}
           />
         )}
+        {handleFork && (
+          <AxoStackedButton.Root
+            symbol="copy-alt"
+            label={i18n('icu:stickers--StickerPreview--Fork')}
+            onClick={handleFork}
+            pending={forking}
+          />
+        )}
       </AxoStackedButton.Row>
       <div
         className={tw(
@@ -170,6 +187,7 @@ function isInstallFooterVisible(
 export const StickerPreviewModal = memo(function StickerPreviewModalInner({
   closeStickerPackPreview,
   downloadStickerPack,
+  forkStickerPack,
   i18n,
   installStickerPack,
   onClose,
@@ -178,6 +196,7 @@ export const StickerPreviewModal = memo(function StickerPreviewModalInner({
   uninstallStickerPack,
 }: Props) {
   const [confirmingUninstall, setConfirmingUninstall] = useState(false);
+  const [forking, setForking] = useState(false);
 
   useEffect(() => {
     if (pack && pack.status === 'known') {
@@ -241,6 +260,21 @@ export const StickerPreviewModal = memo(function StickerPreviewModalInner({
     setConfirmingUninstall(false);
   }, [uninstallStickerPack, setConfirmingUninstall, pack]);
 
+  const handleFork = useCallback(async () => {
+    if (!pack || !forkStickerPack || forking) {
+      return;
+    }
+    setForking(true);
+    try {
+      await forkStickerPack(pack.id, pack.key);
+    } catch (error) {
+      log.error('Failed to fork sticker pack', Errors.toLogFormat(error));
+      showToast({ toastType: ToastType.StickerPackForkFailed });
+    } finally {
+      setForking(false);
+    }
+  }, [forkStickerPack, forking, pack, showToast]);
+
   const handleCopyLink = useCallback(() => {
     if (!pack) {
       return;
@@ -267,7 +301,14 @@ export const StickerPreviewModal = memo(function StickerPreviewModalInner({
             <AxoDialog.Close />
           </AxoDialog.Header>
           <AxoDialog.Body>
-            {renderBody({ pack, i18n, handleCopyLink, handleStartUninstall })}
+            {renderBody({
+              pack,
+              i18n,
+              handleCopyLink,
+              handleStartUninstall,
+              handleFork: forkStickerPack ? handleFork : undefined,
+              forking,
+            })}
           </AxoDialog.Body>
           <AxoDialog.Footer>
             {isInstallFooterVisible(pack) && (

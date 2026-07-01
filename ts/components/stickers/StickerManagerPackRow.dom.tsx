@@ -11,12 +11,18 @@ import {
 } from 'react';
 import type { LocalizerType } from '../../types/Util.std.ts';
 import type { StickerPackType } from '../../state/ducks/stickers.preload.ts';
+import type { ShowToastAction } from '../../state/ducks/toast.preload.ts';
 import { UserText } from '../UserText.dom.tsx';
 import { AxoConfirmDialog } from '../../axo/AxoConfirmDialog.dom.tsx';
 import { AxoIconButton } from '../../axo/AxoIconButton.dom.tsx';
 import { tw } from '../../axo/tw.dom.tsx';
 import { OfficialChatInlineBadge } from '../conversation/OfficialChatInlineBadge.dom.tsx';
 import { AxoContextMenu } from '../../axo/AxoContextMenu.dom.tsx';
+import { ToastType } from '../../types/Toast.dom.tsx';
+import * as Errors from '../../types/errors.std.ts';
+import { createLogger } from '../../logging/log.std.ts';
+
+const log = createLogger('StickerManagerPackRow');
 
 export type OwnProps = {
   readonly i18n: LocalizerType;
@@ -32,6 +38,8 @@ export type OwnProps = {
     packKey: string,
     options: { actionSource: 'ui' }
   ) => unknown;
+  readonly forkStickerPack?: (packId: string, packKey: string) => Promise<void>;
+  readonly showToast?: ShowToastAction;
 };
 
 export type Props = OwnProps;
@@ -39,12 +47,15 @@ export type Props = OwnProps;
 export const StickerManagerPackRow = memo(function StickerManagerPackRowInner({
   installStickerPack,
   uninstallStickerPack,
+  forkStickerPack,
+  showToast,
   onClickPreview,
   pack,
   i18n,
 }: Props) {
   const { id, key, isBlessed } = pack;
   const [uninstalling, setUninstalling] = useState(false);
+  const [forking, setForking] = useState(false);
 
   const clearUninstalling = useCallback(() => {
     setUninstalling(false);
@@ -78,6 +89,25 @@ export const StickerManagerPackRow = memo(function StickerManagerPackRowInner({
       uninstallStickerPack(id, key, { actionSource: 'ui' });
     }
   }, [id, key, clearUninstalling, uninstallStickerPack]);
+
+  const handleFork = useCallback(
+    async (e: Event) => {
+      e.stopPropagation();
+      if (!forkStickerPack || forking) {
+        return;
+      }
+      setForking(true);
+      try {
+        await forkStickerPack(id, key);
+      } catch (error) {
+        log.error('Failed to fork sticker pack', Errors.toLogFormat(error));
+        showToast?.({ toastType: ToastType.StickerPackForkFailed });
+      } finally {
+        setForking(false);
+      }
+    },
+    [forkStickerPack, forking, id, key, showToast]
+  );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -124,6 +154,7 @@ export const StickerManagerPackRow = memo(function StickerManagerPackRowInner({
         i18n={i18n}
         handleInstall={handleInstall}
         handleUninstall={handleUninstall}
+        handleFork={forkStickerPack ? handleFork : undefined}
         isInstalled={pack.status === 'installed'}
       >
         <div
@@ -194,9 +225,11 @@ function PackContextMenu(props: {
   isInstalled: boolean;
   handleInstall: (e: Event) => void;
   handleUninstall: (e: Event) => void;
+  handleFork?: (e: Event) => void;
   children: ReactNode;
 }) {
-  const { i18n, isInstalled, handleInstall, handleUninstall } = props;
+  const { i18n, isInstalled, handleInstall, handleUninstall, handleFork } =
+    props;
 
   return (
     <AxoContextMenu.Root>
@@ -209,6 +242,11 @@ function PackContextMenu(props: {
         ) : (
           <AxoContextMenu.Item symbol="plus-circle" onSelect={handleInstall}>
             {i18n('icu:stickers--StickerManagerPackContextMenu--Add')}
+          </AxoContextMenu.Item>
+        )}
+        {handleFork && (
+          <AxoContextMenu.Item symbol="copy-alt" onSelect={handleFork}>
+            {i18n('icu:stickers--StickerManagerPackContextMenu--Fork')}
           </AxoContextMenu.Item>
         )}
       </AxoContextMenu.Content>

@@ -3682,6 +3682,10 @@
     "messageformat": "Sticker pack could not be installed",
     "description": "Shown in a toast if the user attempts to install a sticker pack and it fails"
   },
+  "icu:stickers--toast--ForkFailed": {
+    "messageformat": "Couldn't fork sticker pack. Check your connection and try again.",
+    "description": "Shown in a toast if the user attempts to fork a sticker pack and it fails"
+  },
   "icu:stickers--StickerManager--Available": {
     "messageformat": "Available",
     "description": "(Deleted 2026/06/15) Shown in the sticker pack manager as a tab for available stickers"
@@ -3758,6 +3762,10 @@
     "messageformat": "Remove",
     "description": "Context menu item to remove a sticker pack. Shown in the sticker pack manager when right clicking a sticker pack."
   },
+  "icu:stickers--StickerManagerPackContextMenu--Fork": {
+    "messageformat": "Fork",
+    "description": "Context menu item to fork a sticker pack, opening the sticker creator prepopulated with its stickers. Shown in the sticker pack manager when right clicking a sticker pack."
+  },
   "icu:stickers--StickerPreview--Title": {
     "messageformat": "Sticker Pack",
     "description": "The title that appears in the sticker pack preview modal."
@@ -3777,6 +3785,10 @@
   "icu:stickers--StickerPreview--Link": {
     "messageformat": "Link",
     "description": "Button to copy the link URL of a sticker pack in the sticker pack preview modal."
+  },
+  "icu:stickers--StickerPreview--Fork": {
+    "messageformat": "Fork",
+    "description": "Button to fork a sticker pack, opening the sticker creator prepopulated with its stickers, in the sticker pack preview modal."
   },
   "icu:stickers--StickerPreview--LinkCopied": {
     "messageformat": "Link copied",
