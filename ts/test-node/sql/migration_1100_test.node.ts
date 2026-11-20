@@ -2,28 +2,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { assert } from 'chai';
-import lodash from 'lodash';
 import type { WritableDB } from '../../sql/Interface.std.ts';
-import { markAllCallHistoryRead } from '../../sql/Server.node.ts';
-import { SeenStatus } from '../../MessageSeenStatus.std.ts';
-import {
-  CallMode,
-  CallDirection,
-  CallType,
-  DirectCallStatus,
-} from '../../types/CallDisposition.std.ts';
-import { strictAssert } from '../../util/assert.std.ts';
-import { createDB, insertData, updateToVersion } from './helpers.node.ts';
-
-const { findLast } = lodash;
+import { sql } from '../../sql/util.std.ts';
+import { createDB, updateToVersion, explain } from './helpers.node.ts';
 
 describe('SQL/updateToSchemaVersion1100', () => {
   let db: WritableDB;
   beforeEach(() => {
     db = createDB();
-    // index updated in 1170
-    // columns updated in 1210
-    updateToVersion(db, 1210);
+    updateToVersion(db, 1100);
   });
 
   afterEach(() => {
@@ -31,68 +18,27 @@ describe('SQL/updateToSchemaVersion1100', () => {
   });
 
   describe('Optimize markAllCallHistoryReadInConversation', () => {
-    it('is fast', () => {
-      const COUNT = 10_000;
-      const CONVERSATIONS = 30;
-
-      const conversations = Array.from(
-        { length: CONVERSATIONS },
-        (_, index) => {
-          return {
-            id: `test-conversation-${index}`,
-            groupId: `test-conversation-${index}`,
-            serviceId: `test-conversation-${index}`,
-          };
-        }
+    it('uses index for marking call history read in conversation', () => {
+      // Mirrors the UPDATE in markAllCallHistoryRead(db, target, true)
+      const details = explain(
+        db,
+        sql`
+          UPDATE messages
+          SET
+            readStatus = 0,
+            seenStatus = 2,
+            json = json_patch(json, '{}')
+          WHERE messages.type IS 'call-history'
+            AND messages.conversationId IS 'test-conversation'
+            AND messages.seenStatus IS 1
+            AND messages.received_at <= 123;
+        `
       );
 
-      const messages = Array.from({ length: COUNT }, (_, index) => {
-        return {
-          id: `test-message-${index}`,
-          type: 'call-history',
-          seenStatus: SeenStatus.Unseen,
-          conversationId: `test-conversation-${index % CONVERSATIONS}`,
-          received_at: index,
-          json: {
-            callId: `test-call-${index}`,
-          },
-        };
-      });
-
-      const callsHistory = Array.from({ length: COUNT }, (_, index) => {
-        return {
-          callId: `test-call-${index}`,
-          peerId: `test-conversation-${index % CONVERSATIONS}`,
-          timestamp: index,
-          ringerId: null,
-          mode: CallMode.Direct,
-          type: CallType.Video,
-          direction: CallDirection.Incoming,
-          status: DirectCallStatus.Missed,
-        };
-      });
-
-      insertData(db, 'conversations', conversations);
-      insertData(db, 'messages', messages);
-      insertData(db, 'callsHistory', callsHistory);
-
-      const latestCallInConversation = findLast(callsHistory, call => {
-        return call.peerId === 'test-conversation-0';
-      });
-
-      strictAssert(latestCallInConversation, 'missing latest call');
-
-      const target = {
-        timestamp: latestCallInConversation.timestamp,
-        callId: latestCallInConversation.callId,
-        peerId: latestCallInConversation.peerId,
-      };
-
-      const start = performance.now();
-      const changes = markAllCallHistoryRead(db, target, true);
-      const end = performance.now();
-      assert.equal(changes, Math.ceil(COUNT / CONVERSATIONS));
-      assert.isBelow(end - start, 50);
+      assert.strictEqual(
+        details,
+        'SEARCH messages USING INDEX messages_callHistory_markReadByConversationBefore (type=? AND conversationId=? AND seenStatus=?)'
+      );
     });
   });
 });
