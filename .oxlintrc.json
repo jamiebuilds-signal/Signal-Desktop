@@ -1800,6 +1800,7 @@
         ".oxlint/**",
         ".storybook/**",
         "build/intl-linter/**",
+        "build/db-query-plans/**",
         "danger/**",
         "ts/test-electron/**",
         "ts/test-mock/**",

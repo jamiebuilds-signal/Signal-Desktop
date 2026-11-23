@@ -4,6 +4,7 @@
     "app/**/*",
     "package.json",
     "build/intl-linter/**/*.ts",
+    "build/db-query-plans/**/*.ts",
     ".oxlint/**/*",
     "scripts/**/*",
     "codemods/**/*",
